@@ -1,127 +1,93 @@
-# Linux Network Services (SSH + Firewall + DNS)
+# Linux Network Services Infrastructure (SSH + Firewall + DNS)
 
-## Overview
-This project demonstrates Linux server administration including:
+## Project Summary
+
+This project demonstrates the deployment and validation of core Linux network services in an SBA-style environment.
+
+Implemented services:
 
 - SSH (Password + Public Key authentication)
-- Firewall configuration using iptables
-- Netcat validation on TCP 16389
-- Authoritative DNS using BIND (snappy.lab)
+- Custom firewall policy using iptables
+- Netcat service validation on TCP 16389
+- Authoritative DNS forward zone using BIND (snappy.lab)
 
-Server IP: 172.16.30.33
-Alias IP: 172.16.32.33
-Client IP: 172.16.30.133
+All services were deployed on a clean RHEL 8 installation and validated using structured troubleshooting methods.
 
 ---
 
-## Network Configuration
-
-### Server
-nmcli con mod ens34 ipv4.method manual
-nmcli con mod ens34 ipv4.addresses 172.16.30.33/24
-nmcli con mod ens34 +ipv4.addresses 172.16.32.33/24
-nmcli con mod ens34 connection.autoconnect yes
-nmcli con up ens34
-
-### Client
-nmcli con mod ens34 ipv4.method manual
-nmcli con mod ens34 ipv4.addresses 172.16.30.133/24
-nmcli con mod ens34 connection.autoconnect yes
-nmcli con up ens34
-
----
-
-## Users
-
-useradd lab
-passwd lab
-
-useradd someone
-passwd someone
-
----
-
-## SSH Configuration
-
-systemctl enable --now sshd
-ss -tlnp | grep :22
-
-Password test:
-ssh lab@172.16.30.33
-
-Public key setup:
-ssh-keygen -t ed25519
-ssh-copy-id someone@172.16.30.33
-
-Public key only test:
-ssh -o PreferredAuthentications=publickey -o PasswordAuthentication=no someone@172.16.30.33
-
----
-
-## Firewall + Netcat (Port 16389)
-
-iptables -F
-iptables -X
-
-iptables -A INPUT -i lo -j ACCEPT
-iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-iptables -A INPUT -p tcp --dport 22 -j ACCEPT
-iptables -A INPUT -p tcp -s 172.16.30.0/24 --dport 16389 -j ACCEPT
-iptables -A INPUT -p tcp --dport 16389 -j REJECT
-
-iptables -L -n --line-numbers
+## Network Topology
 
 Server:
-nc -vl 172.16.30.33 16389
+- Primary IP: 172.16.30.33/24
+- Alias IP: 172.16.32.33/24
 
 Client:
-nc -v 172.16.30.33 16389
+- IP: 172.16.30.133/24
 
 ---
 
-## DNS (BIND)
+## Services Implemented
 
-dnf install -y bind bind-utils
+### 1️⃣ SSH Hardening
+- Password authentication (lab user)
+- Public key authentication (someone user)
+- Service verification using ss and connection testing
 
-named.conf addition:
+Security validation:
+- Forced public-key authentication test
+- Verified no-password login functionality
 
-zone "snappy.lab" IN {
-    type master;
-    file "snappy.lab.zone";
-};
+---
 
-Zone file: /var/named/snappy.lab.zone
+### 2️⃣ Firewall Policy (iptables)
 
-$TTL 86400
-@   IN  SOA ns1.snappy.lab. root.snappy.lab. (
-        2026010101
-        3600
-        1800
-        604800
-        86400 )
+Custom INPUT chain policy:
 
-        IN  NS      ns1.snappy.lab.
-ns1     IN  A       172.16.30.33
+- Allow loopback
+- Allow ESTABLISHED/RELATED
+- Allow SSH (22)
+- Allow TCP 16389 from 172.16.30.0/24
+- Reject TCP 16389 from all other sources
 
-Permissions:
-chown root:named /var/named/snappy.lab.zone
-chmod 640 /var/named/snappy.lab.zone
+Validated using:
+- iptables -L
+- netcat listener
+- Controlled client connection tests
 
-systemctl enable --now named
-ss -tlnp | grep :53
+---
 
-Verification:
+### 3️⃣ DNS (BIND)
+
+Authoritative forward zone:
+snappy.lab
+
+Zone file:
+- SOA
+- NS record
+- A record for ns1.snappy.lab → 172.16.30.33
+
+Validated using:
 dig @172.16.30.33 ns1.snappy.lab
+
+---
+
+## Service Verification Tools
+
+- ss
+- iptables
+- nc (netcat)
+- dig
+- nmcli
 
 ---
 
 ## Skills Demonstrated
 
-- Linux networking (nmcli)
-- SSH hardening (password vs public key)
-- Firewall rule ordering (iptables)
-- Service validation (ss, nc, dig)
-- Authoritative DNS zone deployment (BIND)
-- Structured troubleshooting methodology
+- Linux network configuration
+- SSH authentication models
+- Firewall rule ordering & security logic
+- Authoritative DNS deployment
+- Service validation methodology
+- Structured troubleshooting
 
-Status: Completed successfully
+Status: Successfully implemented and validated.
